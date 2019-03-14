@@ -2,97 +2,91 @@
 
 namespace App\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Request;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 
-use Doctrine\ORM\EntityManagerInterface;
+use FOS\RestBundle\Controller\Annotations as Rest;
+use FOS\RestBundle\Controller\FOSRestController;
+use FOS\RestBundle\View\View;
+
+use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 use App\Entity\User;
 
-class UserController extends AbstractController
-{
+class UserController extends FOSRestController
+{   
+
     /**
-     * @Route("/user/new", name="user_new")
+     * @Rest\Get("/users")
      */
-    public function index(Request $request, EntityManagerInterface $entityManager)
-    {   
-        $name = $request->query->get('name');
-        $user = new User();
-        if (!$name) {
-            $user->setName('Default Name');
+    public function getUsersAction()
+    {
+        $users = $this->getDoctrine()->getRepository('App:User')->findAll();
+        if ($users === null) {
+          return new View("No users exist.", Response::HTTP_NOT_FOUND);
         }
-        else {
+        return $users;
+    }
+
+    /**
+     * @Rest\Get("/users/{id}")
+     */
+    public function getUserAction($id)
+    {
+        $user = $this->getDoctrine()->getRepository('App:User')->find($id);
+        if ($user === null) {
+          return new View("No user exists with this id, try another.", Response::HTTP_NOT_FOUND);
+        }
+        return $user;
+    }
+
+     /**
+     * @Rest\Post("/users")
+     */
+    public function postAction(Request $request)
+    {
+        $data = new User;
+        $name = $request->get('name');
+        if(empty($name)) {
+            return new View("Please specify the user name before proceeding.", Response::HTTP_NOT_ACCEPTABLE); 
+        } 
+        $data->setName($name);
+        $this->getDoctrine()->getRepository('App:User')->persist($data);
+        return new View("User Added Successfully.", Response::HTTP_OK);
+    }
+
+    /**
+     * @Rest\Put("/users/{id}")
+     */
+    public function updateAction($id, Request $request)
+    { 
+        $data = new User;
+        $name = $request->get('name');
+        $en = $this->getDoctrine()->getManager();
+        $user = $this->getDoctrine()->getRepository('App:User')->find($id);
+        if (empty($user)) {
+            return new View("This user does not exist, try another.", Response::HTTP_NOT_FOUND);
+        } 
+        elseif(!empty($name)){
             $user->setName($name);
+            $en->flush();
+            return new View("User name updated successfully.", Response::HTTP_OK);
         }
-
-        // tell Doctrine you want to (eventually) save the Product (no queries yet)
-        $entityManager->persist($user);
-
-        // actually executes the queries (i.e. the INSERT query)
-        $entityManager->flush();
-
-        return $this->redirectToRoute('user_show', [
-            'id' => $user->getId()
-        ]);   
+        else return new View("User name cannot be empty, try again.", Response::HTTP_NOT_ACCEPTABLE); 
     }
 
     /**
-     * @Route("/user/{id}", name="user_show")
+     * @Rest\Delete("/users/{id}")
      */
-    public function show($id)
-    {
-        $user = $this->getDoctrine()
-            ->getRepository(User::class)
-            ->find($id);
-
-        if (!$user) {
-            throw $this->createNotFoundException(
-                'No user found for id '.$id
-            );
+    public function deleteAction($id, Request $request)
+    { 
+        $user = $this->getDoctrine()->getRepository('App:User')->find($id);
+        if ($user === null) {
+          return new View("No user exists with this id, try another.", Response::HTTP_NOT_FOUND);
         }
 
-        return new Response('You have reached the user with the name: '.$user->getName());
-    }
-
-    /**
-     * @Route("/user/edit/{id}")
-     */
-    public function update($id, EntityManagerInterface $entityManager)
-    {
-        $user = $entityManager->getRepository(User::class)->find($id);
-
-        if (!$user) {
-            throw $this->createNotFoundException(
-                'No user found for id '.$id
-            );
-        }
-
-        $user->setName('New product name!');
-        $entityManager->flush();
-
-        return $this->redirectToRoute('user_show', [
-            'id' => $user->getId()
-        ]);
-    }
-
-    /**
-     * @Route("/user/remove/{id}")
-     */
-    public function remove($id, EntityManagerInterface $entityManager)
-    {
-        $user = $entityManager->getRepository(User::class)->find($id);
-
-        if (!$user) {
-            throw $this->createNotFoundException(
-                'No user found for id '.$id
-            );
-        }
-
-        $entityManager->remove($user);
-        $entityManager->flush();
-
-        return new Response('You have removed the user with name: '.$user->getName());
+        $this->getDoctrine()->getRepository('App:User')->delete($user);
+        return new View("User deleted succesfully. ", Response::HTTP_OK);
     }
 }
