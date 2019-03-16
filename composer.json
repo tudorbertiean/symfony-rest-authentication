@@ -7,6 +7,7 @@
         "ext-iconv": "*",
         "friendsofsymfony/rest-bundle": "@dev",
         "jms/serializer-bundle": "@dev",
+        "lexik/jwt-authentication-bundle": "^2.6",
         "nelmio/api-doc-bundle": "@dev",
         "nelmio/cors-bundle": "^1.5",
         "sensio/framework-extra-bundle": "^5.1",

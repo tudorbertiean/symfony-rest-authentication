@@ -42,18 +42,23 @@ class UserController extends FOSRestController
     }
 
      /**
-     * @Rest\Post("/users")
+     * @Rest\Post("/users/register")
      */
-    public function postAction(Request $request)
+    public function registerAction(Request $request)
     {
-        $data = new User;
+        $user = new User;
         $name = $request->get('name');
-        if(empty($name)) {
-            return new View("Please specify the user name before proceeding.", Response::HTTP_NOT_ACCEPTABLE); 
-        } 
-        $data->setName($name);
-        $this->getDoctrine()->getRepository('App:User')->persist($data);
-        return new View("User Added Successfully.", Response::HTTP_OK);
+        $password = $request->get('password');
+        if(empty($name) || empty($password)) {
+            return new View("Please specify the user name and password before proceeding.", Response::HTTP_NOT_ACCEPTABLE); 
+        } else if ($this->getDoctrine()->getRepository('App:User')->findOneBy(['name' => $name])){
+            return new View("A user already exists with this name! Try another.", Response::HTTP_NOT_ACCEPTABLE); 
+        }
+        
+        $user->setName($name);
+        $user->setPassword(password_hash($password, PASSWORD_BCRYPT));
+        $this->getDoctrine()->getRepository('App:User')->persist($user);
+        return $user;
     }
 
     /**
